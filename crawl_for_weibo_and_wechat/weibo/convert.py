@@ -1,12 +1,3 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright (c): 2009-2016 Weiboyi Inc., all rights reserved
-# License: Closed Source
-# Author: Lin, Xing <linxing@weiboyi.com>
-# Description:
-# Version: 1.0
-# History: 7/25/16 Created By Xing.
-#
 from __future__ import unicode_literals
 
 import math
@@ -104,7 +95,7 @@ def test():
     convert_to_base62_mid = mid_base62_encode(base10_mid)
     print convert_to_base62_mid
 
-    a = 'FnEiDbwpm'
+    a = 'F2kAflgxm'
     print mid_base62_decode(a)
 
 

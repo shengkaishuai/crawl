@@ -11,11 +11,9 @@ import tornado.options
 import tornado.web
 from tornado.options import define, options
 
-from utils import *
-# TODO 尽量不要import *, 写出具体要导入的，避免命名冲突
+from outter import *
 from weibo import weibo_validator
 from weixin import weixin_validator
-
 
 define("port", default=8080, help="run on the given port", type=int)
 logger = logging.getLogger()
@@ -29,30 +27,27 @@ CODE_MAP = {'1000': {'code': 1000, 'err_msg': '', 'user': {}},
             '1006': {'code': 1006, 'err_msg': '其他错误', 'user': {}}
             }
 
-
 class IndexHandler(tornado.web.RequestHandler):
     @tornado.gen.coroutine
     def get(self):
+        # try:
         time1 = time.time()
         platform = self.get_argument('weibo_type').encode('utf-8')
         need_to_be_urls = self.get_argument('urls')  # need_to_be_url是个字符串
+        print "need_to_be_url:", need_to_be_urls
 
-        # TODO 变量名起的有点不恰当，corrent_http里面放的是url，那为什么不起名为legal_urls_list
         correct_http = []
         error_http = []
-        result_list = []
         if platform == '1':
             for i in need_to_be_urls.split(',')[:50]:
                 if weibo_validator.validate_weibo_url(i):
                     correct_http.append(i)
                 else:
                     error_http.append(i)
-            # TODO need_to_be_urls, dict_url 让人看了根本就不知道里面放的是什么
-            need_to_be_urls, dict_url = WeiboType.weibo_encode(correct_http)  # 得到dict_url  # 返回值need_to_be_url是字符串
-            # print "api:" + need_to_be_url  # 这里没有问题
-            platform, result_list = Utils.pool(platform, need_to_be_urls)  # result_list = pool(platform,need_to_be_url) 这样写返回结果会以元祖形式存在result_list
-            for i in result_list:  # 每个i是正确结果的weibo字典
-                i['url'] = dict_url[str(i['tweet_id'])]  # 把url加进字典
+            need_to_be_urls, dict_url = Outter.weibo_encode(correct_http)  
+            platform, result_list = Outter.pool(platform, need_to_be_urls)  
+            for i in result_list:  
+                i['url'] = dict_url[str(i['tweet_id'])]  
             for i in error_http:
                 error_dict = {}
                 error_dict['err_msg'] = 'http网址错误'
@@ -65,7 +60,7 @@ class IndexHandler(tornado.web.RequestHandler):
                 else:
                     error_http.append(i)
             need_to_be_urls = (',').join(correct_http)
-            platform, result_list = Utils.pool(platform, need_to_be_urls)  # result_list = pool(platform,need_to_be_url) 这样写返回结果会以元祖形式存在result_list
+            platform, result_list = Outter.pool(platform, need_to_be_urls)  
             for i in error_http:
                 error_dict = {}
                 error_dict['err_msg'] = 'http网址错误'
@@ -73,11 +68,21 @@ class IndexHandler(tornado.web.RequestHandler):
                 result_list.append(error_dict)
 
 
-        result = json.dumps(result_list)
-        self.write(result)
-        self.finish()
+        CODE_MAP['1000']['user'] = result_list
 
 
+
+        if result_list:
+            result = CODE_MAP['1000']
+            logger.info('successfully present the result')
+            result = json.dumps(result)
+            self.write(result)
+        else:
+            result = CODE_MAP['1003']
+            logger.info('系统抓取错误')
+            result = json.dumps(result)
+            self.write(result)
+            self.finish()
         time2 = time.time()
         print time2 - time1
 
@@ -85,7 +90,7 @@ class IndexHandler(tornado.web.RequestHandler):
 
 if __name__ == "__main__":
     tornado.options.parse_command_line()
-    app = tornado.web.Application(handlers=[(r"/weiboyi/azkaban/url_data", IndexHandler)])  # 注意路径问题，一定要写全！！！
+    app = tornado.web.Application(handlers=[(r"/crawldata", IndexHandler)])  
     http_server = tornado.httpserver.HTTPServer(app)
     http_server.listen(options.port)
     tornado.ioloop.IOLoop.instance().start()
